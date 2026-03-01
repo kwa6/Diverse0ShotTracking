@@ -12,7 +12,6 @@ cache
 .env
 results/dsg5k_induced_samples.csv
 ezpyzy/
-language_model/
 model_download.py
 bf16/
 
