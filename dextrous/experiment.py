@@ -1,6 +1,20 @@
 import torch.cuda
 
 import ezpyzy as ez
+# --- compat: published ezpyzy may not expose ez.split ---
+if not hasattr(ez, "split"):
+    def _ez_split(s, *seps):
+        if s is None:
+            return [None]
+        out = [str(s)]
+        for sep in seps:
+            new = []
+            for part in out:
+                new.extend(part.split(sep))
+            out = new
+        return [x.strip() for x in out if x is not None and str(x).strip() != ""]
+    ez.split = _ez_split
+# --- end compat ---
 import dataclasses as dc
 import traceback as tb
 import resource as res
@@ -333,55 +347,76 @@ if __name__ == '__main__':
         main()
     else:
         LlamaExperimentRun(
-            base='meta-llama/Meta-Llama-3.1-8B-Instruct',
-            format=llama3format,
-            groupcode='llama3-baseline-mwoz',
-            approach='LlamaTracker',
-            train_data='data/mwoz2.4/train',
-            eval_data='data/mwoz2.4/valid',
-            train_downsample=None,
-            eval_dialogue_downsample=10,
-            gradient_accumulation_steps=16,
-            gen_batch_size=1,
-            eval_exclude_speakers='bot',
-            test_domains=['restaurant'],
-            eval_all_slots_per_domain=True,
-            prediction_lowercase=True,
-            prediction_fuzzy_match_candidates=True,
-            epochs=1,
-            max_sequence_length=512,
-            protected_input_length=400,
-            param_magnitude='8B',
-            train_batch_size=16,  # 128
-            warmup_steps=100,
-            optimizer='adafactor',
-            learning_rate=1e-2,
-            weight_decay=0.0,
-            quantize='nf4',
-            lora=2,
-            lora_alpha=4,
-            lora_dropout=0.0,  # 0.1 # (default)
-            train_all_slots_per_domain=True,
-            exclude_speakers=['bot'],
-            train_prop_add_continuation=1.0,
-            train_percent_with_description=1.0,
-            train_percent_description_only=0.0,
-            train_percent_with_categories=0.0,
-            train_percent_with_value_exs=0.0,
-            train_percent_value_ex_includes_actual_value=None,
-            train_remove_request_token_percent=None,
-            train_filters_out_descriptions_with_actual_value=None,
-            eval_with_categories=False,
-            eval_with_value_exs=False,
-            uncased=False,
-            num_beams=1,
-            repetition_penalty=1.0,
-            max_output_length=32,
-            rng_seed=21,
-            do_eval_after_all_training=False,
-            calculate_eval_perplexity=False,
-            yield_every_x_epochs=0.001,
-            dynamic_tokenization=True,
-            notifications=False,
-            tokenizer_reponame='meta-llama/Meta-Llama-3.1-8B-Instruct',
-        )
+    # --- Model ---
+    base="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    tokenizer_reponame="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    format=llama3format,
+
+    # --- Identification ---
+    approach="LlamaTracker",
+    groupcode="smoke",
+    experiment="train_smoke_d0t_1epoch_tiny",
+
+    # --- Data ---
+    train_data="data/dsg5k/train",
+    eval_data="data/mwoz2.4/valid",
+    train_downsample=2000,
+    eval_dialogue_downsample=5,      # small for 8GB GPU
+    test_domains=None,
+
+    # --- Training (disabled for smoke test) ---
+    epochs=1,
+    train_batch_size=1,
+    gradient_accumulation_steps=1,
+    warmup_steps=0,
+    optimizer="adamw",
+    learning_rate=1e-4,
+    weight_decay=0.0,
+
+    # --- Sequence lengths (reduced for VRAM safety) ---
+    max_sequence_length=128,
+    protected_input_length=96,
+    max_output_length=8,
+
+    # --- Generation ---
+    gen_batch_size=1,
+    num_beams=1,
+    repetition_penalty=1.0,
+
+    # --- Slot behaviour ---
+    train_all_slots_per_domain=True,
+    eval_all_slots_per_domain=True,
+    exclude_speakers=["bot"],
+    eval_exclude_speakers="bot",
+
+    # --- Prompt config ---
+    train_prop_add_continuation=1.0,
+    train_percent_with_description=1.0,
+    train_percent_description_only=0.0,
+    train_percent_with_categories=0.0,
+    train_percent_with_value_exs=0.0,
+    train_percent_value_ex_includes_actual_value=None,
+    train_remove_request_token_percent=None,
+    train_filters_out_descriptions_with_actual_value=None,
+
+    # --- Evaluation flags ---
+    eval_with_categories=False,
+    eval_with_value_exs=False,
+    prediction_lowercase=True,
+    prediction_fuzzy_match_candidates=True,
+    uncased=False,
+
+    # --- Quantization / LoRA (disabled in minimal shim) ---
+    quantize=None,
+    lora=None,
+    lora_alpha=None,
+    lora_dropout=0.0,
+
+    # --- Misc ---
+    rng_seed=21,
+    do_eval_after_all_training=True,
+    calculate_eval_perplexity=False,
+    yield_every_x_epochs=1,
+    dynamic_tokenization=True,
+    notifications=False,
+)
